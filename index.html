@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>点击得分小游戏</title>
+    <title>点击游戏修复版</title>
     <style>
         #game {
             width: 600px;
@@ -15,10 +15,7 @@
             background-color: red;
             position: absolute;
             cursor: pointer;
-        }
-        #score {
-            font-size: 24px;
-            padding: 10px;
+            z-index: 999; /* 确保顶层 */
         }
     </style>
 </head>
@@ -27,6 +24,26 @@
     <div id="game">
         <div id="target"></div>
     </div>
-    <script src="game.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let score = 0;
+            const target = document.getElementById('target');
+            const scoreDisplay = document.getElementById('score');
+
+            function moveTarget() {
+                const x = Math.random() * (600 - 50);
+                const y = Math.random() * (400 - 50);
+                target.style.transform = `translate(${x}px, ${y}px)`;
+            }
+
+            target.addEventListener('click', () => {
+                score++;
+                scoreDisplay.textContent = `得分: ${score}`;
+                moveTarget();
+            });
+
+            moveTarget(); // 初始化位置
+        });
+    </script>
 </body>
 </html>
