@@ -46,6 +46,8 @@
       cursor: pointer;
       text-decoration: none;
       transition: background 0.2s;
+      min-width: 150px;
+      text-align: left;
     }
 
     .note-button:hover {
@@ -76,11 +78,12 @@
 
   <!-- Markdown 预览区域 -->
   <div id="preview-container">
-    <h2>点击左侧笔记以查看内容：</h2>
+    <h2>请从左侧选择一个笔记以查看内容：</h2>
   </div>
 
-  <!-- 引入 marked.js 用于 Markdown 渲染 -->
+  <!-- 引入 marked.js 和 DOMPurify（用于安全渲染） -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
 
   <script>
     // 设置 GitHub 用户名和仓库名（请替换成你的信息）
@@ -90,22 +93,21 @@
     // 获取 GitHub 上的 Markdown 文件并按课程分类
     async function fetchMarkdownFiles() {
       try {
-        // 获取 notes 目录下的所有子目录（课程）
         const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/notes`);
-        const items = await response.json();
+        if (!response.ok) throw new Error(`HTTP 错误：${response.status}`);
 
-        // 按课程分类整理笔记
+        const items = await response.json();
         const categorizedNotes = {};
+
         for (const item of items) {
           if (item.type === 'dir') {
-            const courseName = item.name;
             const dirResponse = await fetch(item.url);
+            if (!dirResponse.ok) continue; // 忽略错误目录
             const dirItems = await dirResponse.json();
-            categorizedNotes[courseName] = dirItems.filter(file => file.name.endsWith('.md'));
+            categorizedNotes[item.name] = dirItems.filter(file => file.name.endsWith('.md'));
           }
         }
 
-        // 在页面上展示分类后的笔记
         const container = document.getElementById('markdown-list');
         container.innerHTML = '';
 
@@ -116,7 +118,7 @@
 
             const title = document.createElement('div');
             title.className = 'category-title';
-            title.textContent = ` ${course} `;
+            title.textContent = `${course}`;
 
             const ul = document.createElement('ul');
 
@@ -144,7 +146,7 @@
 
       } catch (err) {
         console.error("获取 GitHub 文件失败:", err);
-        alert("无法连接到 GitHub 仓库，请检查网络或仓库配置。");
+        alert("无法连接到 GitHub 仓库，请检查网络或仓库配置。\n错误详情：" + err.message);
       }
     }
 
@@ -152,13 +154,20 @@
     async function previewMarkdown(url) {
       try {
         const response = await fetch(url);
+        if (!response.ok) throw new Error(`无法获取 Markdown 内容：${response.status}`);
         const text = await response.text();
-        const html = marked(text);
+
+        // 安全地解析 Markdown
+        const html = DOMPurify.sanitize(marked(text));
         const previewContainer = document.getElementById('preview-container');
         previewContainer.innerHTML = `<h2>笔记内容：</h2>${html}`;
       } catch (err) {
         console.error("预览失败", err);
-        alert("无法加载 Markdown 文件。");
+        const previewContainer = document.getElementById('preview-container');
+        previewContainer.innerHTML = `
+          <h2>加载失败</h2>
+          <p>错误原因：<code>${err.message}</code></p>
+        `;
       }
     }
 
